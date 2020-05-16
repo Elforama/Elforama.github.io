@@ -1,0 +1,604 @@
+<!--
+"TWO PLAYER PONG"
+Developed by: Lawrence J. Muller
+As of 5/1/2013
+Version: 1.0
+
+This is a simple implementation of the game "Pong". This version however is
+designed for two players to face off against each other. Players can alter the 
+tragectory of the ball as it moves faster with each bounce.
+-->
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+	<head>
+		
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>Pong</title>
+		
+        
+<script type="text/javascript">
+	//game state constants			
+	var STARTSCREEN = 0;
+	var GAMESCREEN = 1;
+	var GAMEOVER = 2;
+	var NEWGAME = 3;
+	var PAUSE = 4;
+	var HELPSCREEN = 5;
+	//state to determine what to render to screen (start screen, game screen, gameover screen)	
+	var state;
+	//Objects		
+	var player1, player2;
+	var ball;
+			
+	var SCORETOWIN = 10;
+	
+	var c;
+	var ctx;
+			
+	//game time
+	var startTime;
+	var deltaTime;
+			
+	//Sounds
+	var scoreSound = new Audio("score.wav");
+	var bounceSound = new Audio("bounce.wav");
+	var enterSound  = new Audio("enterSound.wav");
+	var winSound = new Audio("win.wav");
+					
+	//Object classes			
+	function Vector2D(x, y, s){
+		this.dx = x;
+		this.dy = y;	
+		this.speed = s;	
+	}
+			
+	function Player(x, y, width, height, color){
+		var IDLE = 0;
+		var UP = 1;
+		var DOWN = 2;
+		var state = IDLE;//two state used for smooth keyboard controls
+		var state2 = IDLE;
+		this.x = x;
+		this.y = y;
+		this.width = width;
+		this.height = height;		
+		this.color = color;
+		this.score = 0;
+			
+		//Used to go through GAMESCREEN loop twice in order for flashing animation to show when paddle is hit	
+		this.hitWait = false;
+		this.hit = false;
+		
+		//Used when restarting the game
+		//Resets everything to starting state			
+		this.Reset = function(xIn, yIn, widthIn, heightIn, colorIn){
+			state = IDLE;
+			state2 = IDLE;
+			this.x = xIn;
+			this.y = yIn;
+			this.width = widthIn;
+			this.height = heightIn;		
+			this.color = colorIn;
+			this.score = 0;
+			this.hit = false;
+		}
+		
+		//Getters for obtaining the modified (actual) x, y, width, and height values
+		this.GetX = function(){
+			return(this.x - this.width/2);
+		}
+			
+		this.GetY = function(){
+			return(this.y - this.height/2);
+		}
+	
+		this.GetWidth = function(){
+			return(this.x + this.width/2);
+		}
+			
+		this.GetHeight = function(){
+			return(this.y + this.height/2);
+		}
+			
+		//Updates players position
+		this.Move = function(){
+			if(this.state == UP && (this.y - this.height/2) >= 0)
+			    this.y -= 5 + ball.dir.speed/2; //faster ball moves, the faster the paddle moves
+			else if(this.state == DOWN && (this.y + this.height/2) <= 600)
+				this.y += 5 + ball.dir.speed/2;
+		}
+	}
+			
+	function Ball(x, y, width, height, color){
+		this.x = x;
+		this.y = y;
+		this.width = width;		
+		this.height = height;		
+		this.color = color;
+		this.dir = new Vector2D(1, .1, 3);
+		
+		//Updates balls position	
+		this.Move = function(){
+			this.x = this.x + (this.dir.dx * this.dir.speed);
+			this.y = this.y	+ (this.dir.dy * this.dir.speed);
+		}
+		
+		//Used when restarting the game and when a player scores
+		//Resets everything to starting state	
+		this.Reset = function(x, y, width, height, color){
+			this.x = x;
+			this.y = y;
+			this.width = width;		
+			this.height = height;		
+			this.color = color;
+			this.dir.speed = 3;
+			//Starts ball going off in a random direction
+			if(Math.random() > .5)
+				this.dir.dx = 1;
+			else
+				this.dir.dx = -1;
+			if(Math.random() > .5)
+				this.dir.dy = .1;
+			else
+				this.dir.dy = -.1;
+			
+			
+		}
+		
+		//Getters for obtaining the modified (actual) x, y, width, and height values	
+		this.GetX = function(){
+			return(this.x - this.width/2);
+		}
+			
+		this.GetY = function(){
+			return(this.y - this.height/2);
+		}
+	
+		this.GetWidth = function(){
+			return(this.x + this.width/2);
+		}
+			
+		this.GetHeight = function(){
+			return(this.y + this.height/2);
+		}
+	}
+
+	window.requestFrame = (function(callback){
+			return window.requestAnimationFrame || 
+			window.webkitRequestAnimationFrame ||
+			window.mozkitRequestAnimationFrame ||
+			window.oRequestAnimationFrame ||
+			window.mskitRequestAnimationFrame ||
+			function(callback){window.setTimeout(callback, 1000/60);};
+		})();
+
+	//Called when webpage is first loaded, used to initialize the game and get canvas and context		
+	window.onload=function(){
+		//Initialize objects
+		
+		//Player 1 at left side of screen
+		player1 = new Player(5, 300, 30, 120, "#FF0000");
+			
+		//Player 2 at right side of screen
+		player2 = new Player(955, 300, 30, 120, "#0000FF");
+			
+		//Ball in middle of screen
+		ball = new Ball(480, 300, 20, 20, "#FFFFFF");	
+		//Score starts at 0
+		
+		state = STARTSCREEN;
+			
+		c = document.getElementById("myCanvas");
+		ctx = c.getContext("2d");
+		
+		//Begins update loop
+		Update();
+	}
+	
+			
+	//Repeated call to Update
+	//chooses positioning of all objects on screen
+	function Update(){
+		//Determines which screen is rendered
+		switch(state){
+			case STARTSCREEN:
+				StartScreen();
+				break;
+			case HELPSCREEN:
+				HelpScreen();
+				break;
+			case NEWGAME:
+				NewGame();
+				break;
+			case GAMESCREEN:
+				GameScreen();
+				break;
+			case PAUSE:
+				break;
+			case GAMEOVER:
+				GameOverScreen();
+				break;
+		}
+		
+		//Call Update() again
+		requestFrame(function(){Update();});
+		//setInterval("Update()",500);	
+	}
+		
+	//"PONG" start screen with help instructions		
+	function StartScreen(){
+		//Clear screen
+		ctx.clearRect(0, 0, c.width, c.height );
+		//Background
+		ctx.fillStyle = "#000000"; //black
+		ctx.fillRect(0, 0, c.width, c.height);
+		//Title			
+		ctx.fillStyle = "#FFFFFF"; //white
+		ctx.font = "210px Impact";
+		ctx.fillText("PONG!", 210, 280);
+		//Enter prompt
+		ctx.font = "40px Impact";
+		ctx.fillText(String("PRESS 'ENTER' TO START"), 280, 385);
+		//Help prompt
+		ctx.font = "30px Impact";
+		ctx.fillText(String("PRESS 'H' FOR HELP"), 360, 470);
+		
+		//Signature
+		ctx.font = "21px Impact";
+		ctx.fillText(String("LAWRENCE MULLER"), 15, 579);
+			
+		//startTime = System.
+	}
+			
+	function HelpScreen(){
+		//Clear screen
+		ctx.clearRect(0, 0, c.width, c.height );
+		//Background
+		ctx.fillStyle = "#000000"; //black
+		ctx.fillRect(0, 0, c.width, c.height);
+		//Title
+		ctx.fillStyle = "#FFFFFF"; //white
+		ctx.font = "80px Impact";
+		ctx.fillText(String("HOW TO PLAY"), 260, 100)
+		//Controls
+		ctx.font = "30px Impact";
+		ctx.fillText(String("CONTROLS:"), 400, 200);
+		ctx.fillText(String("RED 'Q' AND 'A'"), 380, 240);
+		ctx.fillText(String("BLUE 'P' AND 'L'"), 379, 280);
+		ctx.fillText(String("'ENTER' TO PAUSE"), 365, 320);
+		//Tips
+		ctx.fillText(String("TIPS:"), 430, 400);
+		ctx.fillText(String("MOVE THE PADDLE RIGHT BEFORE"), 280, 440);
+		ctx.fillText(String("HITTING THE BALL TO ALTER ITS COURSE"), 240, 480);
+	}
+			
+	function NewGame(){
+		//Initialize objects
+			
+		//Player 1 at left side of screen
+		player1.Reset(5, 300, 30, 120, "#FF0000");
+			
+		//Player 2 at right side of screen
+		player2.Reset(955, 300, 30, 120, "#0000FF");
+			
+		//Ball in middle of screen
+		ball.Reset(480, 300, 20, 20, "#FFFFFF");
+
+		//Sets state to gamescreen onnce initization is complete 
+		state = GAMESCREEN;
+		//Calls update now that state has been changed
+			
+		
+		Update();	
+	}
+		
+	function GameScreen(){
+		ctx.clearRect(0, 0, c.width, c.height );
+		//Paddle flash animation timer
+		if(player1.hitWait)
+			player1.hitWait = false;
+		else if(player2.hitWait)
+			player2.hitWait = false;
+												//console.log("h".charCodeAt(0));	
+		//Update player positions
+		player1.Move();
+		player2.Move();
+		//Update ball position
+		ball.Move();
+		//React to ball hitting walls
+		WallHit();	
+		//React to ball hitting paddles
+		Collisions();	
+
+		//Background
+		ctx.fillStyle = "#000000"; //black
+		ctx.fillRect(0, 0, c.width, c.height);
+		//Draw divider
+		ctx.strokeStyle = "#FFFFFF";	//black
+		ctx.moveTo(480, 0);
+		ctx.lineTo(480, 600);
+		ctx.stroke();	
+		//Draw scores
+		ctx.fillStyle = "#FFFFFF"
+		//ctx.font = "300px Impact";
+		//ctx.fillText(String(player1.score), 210, 405);
+		//ctx.fillText(String(player2.score), 570, 405);
+		ctx.font = "80px Impact";
+		ctx.fillText(String(player1.score), 380, 80);
+		ctx.fillText(String(player2.score), 540, 80);
+			
+		//Draw player paddles
+		if(player1.hit == true)
+			ctx.fillStyle = "#FFFFFF";//flash paddle white if hit
+		else
+			ctx.fillStyle = player1.color;
+		ctx.fillRect(player1.x - player1.width / 2, player1.y - player1.height / 2, player1.width, player1.height);
+		if(player2.hit == true)
+			ctx.fillStyle = "#FFFFFF";//flash paddle white if hit
+		else
+			ctx.fillStyle = player2.color;
+		ctx.fillRect(player2.x - player2.width / 2, player2.y - player2.height / 2, player2.width, player2.height);
+			
+		//Draw ball
+		ctx.fillStyle = ball.color;
+		ctx.beginPath();
+		ctx.fillRect(ball.x - ball.width / 2, ball.y - ball.height / 2, ball.width, ball.height);
+		
+		//Paddle flash animation timer finish
+		if(!player1.hitWait)
+			player1.hit = false;
+		if(!player2.hitWait)
+			player2.hit = false;
+			
+		//Check to see if a player won, if so, then change state to GAMEOVER
+		if(player1.score >= SCORETOWIN || player2.score >= SCORETOWIN){
+			state = GAMEOVER;
+			winSound.play();
+		}
+	}
+			
+	function GameOverScreen(){
+		ctx.clearRect(0, 0, c.width, c.height );
+		state = GAMEOVER;
+		
+		//Show winner	
+		if(player1.score >= SCORETOWIN){//RED WINS
+			//Background
+			ctx.fillStyle = player1.color; 
+			ctx.fillRect(0, 0, c.width, c.height);
+			
+			ctx.fillStyle = "#FFFFFF"; //white
+			ctx.font = "111px Impact";
+			ctx.fillText("RED WINS!", 245, 300);
+		}
+		else if(player2.score >= SCORETOWIN){//BLUE WINS
+			//Background
+			ctx.fillStyle = player2.color; 
+			ctx.fillRect(0, 0, c.width, c.height);
+			
+			ctx.fillStyle = "#FFFFFF"; //white
+			ctx.font = "111px Impact";
+			ctx.fillText("BLUE WINS!", 225, 300);
+		}
+		
+		//Retry prompt	
+		ctx.font = "45px Impact";
+		ctx.fillText(String("PRESS ENTER TO RESTART"), 250, 420);		
+	}
+
+	function Collisions(){
+		//detect if ball hits either paddle
+		if(ball.x < 480){
+			//if ball hits RED player
+			if(((ball.GetX() > player1.GetX() && ball.GetX() < player1.GetWidth()) || (ball.GetWidth() > player1.GetX() && ball.GetWidth() < player1.GetWidth())) 
+				&& ((ball.GetY() > player1.GetY() && ball.GetY() < player1.GetHeight())
+				|| (ball.GetHeight() > player1.GetY() && ball.GetHeight() < player1.GetHeight()) || ((ball.GetY() > player1.GetY() && ball.GetY() < player1.GetHeight)
+				&& (ball.GetHeight() > player1.GetY() && ball.GetHeight() < player1.GetHeight())))){
+				ball.dir.dx *= -1;
+				ball.dir.speed += .2;
+				if(player1.state == 1)
+					ball.dir.dy -= .1;//UP
+				else if(player1.state == 2)	
+					ball.dir.dy += .1;//DOWN
+				bounceSound.play();
+				player1.hit = true;
+				player1.hitWait = true;
+			}
+		}else{
+			//if ball hits BLUE player
+			if(((ball.GetX() > player2.GetX() && ball.GetX() < player2.GetWidth()) || (ball.GetWidth() > player2.GetX() && ball.GetWidth() < player2.GetWidth())) 
+				&& ((ball.GetY() > player2.GetY() && ball.GetY() < player2.GetHeight())
+				|| (ball.GetHeight() > player2.GetY() && ball.GetHeight() < player2.GetHeight()) || ((ball.GetY() > player2.GetY() && ball.GetY() < player2.GetHeight)
+				&& (ball.GetHeight() > player2.GetY() && ball.GetHeight() < player2.GetHeight())))){
+				ball.dir.dx *= -1;
+				ball.dir.speed += .2;
+				if(player2.state == 1)
+					ball.dir.dy -= .2;//UP
+				else if(player2.state == 2)	
+					ball.dir.dy += .2;//DOWN
+				bounceSound.play();
+				player2.hit = true;
+				player2.hitWait = true;
+			}
+		}
+	}
+			
+	function WallHit(){
+		if(ball.GetX() < 0){ //ball hit left wall
+			ball.dir.dx *= -1;
+			player2.score++;
+			scoreSound.play();
+			ball.Reset(480, 300, 20, 20, "#FFFFFF");
+		}else if(ball.GetWidth() > 960){//ball hit right wall
+			ball.dir.dx *= -1;
+			player1.score++;
+			scoreSound.play();
+			ball.Reset(480, 300, 20, 20, "#FFFFFF");
+		}else if(ball.GetY() < 0 || ball.GetHeight() > 600){ //ball hit top or bottom wall
+			ball.dir.dy *= -1;
+			bounceSound.play();
+		}
+	}
+			
+	// 'q' = 81
+	// 'a' = 65
+	// up arrow = 38	
+	// down arrow = 40
+	// 'h' = 104
+		
+	//Gets user DOWN input		
+	window.addEventListener('keydown', function(event) {
+			console.log(event.keyCode);
+		switch(state){
+			case STARTSCREEN:
+				//allow user to press enter to start the game
+				if(event.keyCode == 13){
+					state = NEWGAME;//sets state to new game to initlalize everything
+					enterSound.play();
+				}else if(event.keyCode == 72){
+					state = HELPSCREEN;
+					enterSound.play();
+				}
+				break;
+			case GAMESCREEN:
+				//allow control over the players paddles
+			   	switch(event.keyCode){
+			     	case 80: // Up			BLUE PLAYER
+						if(player2.state != 1){
+							player2.state2 = player2.state;
+							player2.state = 1;
+						}else 
+							player2.state = 1;
+			     		break;
+			     	case 76: // Down
+			        	if(player2.state != 2){
+							player2.state2 = player2.state;
+							player2.state = 2;
+						}else 
+							player2.state = 2;
+			     		break;
+					case 81: //Q			RED PLAYER
+						if(player1.state != 1){
+							player1.state2 = player1.state;
+							player1.state = 1;
+						}else 
+							player1.state = 1;
+						break;
+					case 65: //A			
+						if(player1.state != 2){
+							player1.state2 = player1.state;
+							player1.state = 2;
+						}else 
+							player1.state = 2;
+						break;
+					case 13: //Enter		PAUSE
+						enterSound.play();
+						state = PAUSE
+			   	}
+			 	break;
+			case PAUSE:
+				if(event.keyCode == 13){
+					state = GAMESCREEN;
+					enterSound.play();
+				}
+				break;
+			case GAMEOVER:
+				if(event.keyCode == 13){
+					state = STARTSCREEN;
+					enterSound.play();
+					location.reload(true); //added to fix restart speedup
+				}
+				break;
+			case HELPSCREEN:
+				if(event.keyCode == 13 || event.keyCode == 72){
+					state = STARTSCREEN;
+					enterSound.play();
+				}
+				break;
+		}
+	}, true);
+
+	//Gets user UP input		
+	//Only used for player movement
+	window.addEventListener('keyup', function(event) {
+		switch(event.keyCode){
+			case 80: // Up
+				if(player2.state == 1)
+					player2.state = player2.state2;
+				player2.state2 = 0;
+			    break;
+			case 76: // Down
+			    if(player2.state == 2)
+					player2.state = player2.state2;
+				player2.state2 = 0;
+			    break;
+			case 81: //Q
+				if(player1.state == 1)
+					player1.state = player1.state2;
+				player1.state2 = 0;
+				break;
+			case 65: //A
+				if(player1.state == 2)
+					player1.state = player1.state2;
+				player1.state2 = 0;
+				break; 	
+		}
+	}, true);
+			
+</script>
+		
+        <link href="Layout.css" rel="stylesheet">
+	    <link rel="stylesheet" type="text/css" href="styles.css">
+        
+	</head>
+    
+<body>
+
+<div class="wrapper" id="divMid">
+
+	<header class="header">
+        <br>
+        <p><h2>Lawrence Muller's Portfolio</h2></p>
+    
+        <nav>
+            - <a href="index.html"> Home</a> |
+            <a href="Art_2D.html"> 2D Artwork</a> |
+            <a href="Art_3D.html"> 3D Artwork</a></li> |
+            <a href="Cube%20Jump%20Web.html"> Game Development</a> - 
+        </nav>
+        ------------------------------------------------------------------------------
+	</header><!-- .header-->
+
+	<main class="content">
+        <br>
+        <nav>
+            - <a href="Cube%20Jump%20Web.html">Cube Jump</a> |
+            <a href="Pong.html">Pong</a> |
+            <a href="One%20at%20a%20Time%20v1.html">One at a Time</a> |
+            <a href="ZombieShooterGame.html">Zombie Shooter</a></li> -
+        </nav>
+        <br>
+        <div id="divMid">
+            <h3>Pong</h3>
+		      <canvas id="myCanvas" width="960" height="600" style="border:3px solid #000000;">
+                        Your browser does not support the HTML5 canvas tag.
+              </canvas>
+        </div>
+        <br><br><br>
+		
+	</main><!-- .content -->
+
+	<footer class="footer">
+	Site by Lawrence Muller 2013
+        <br>
+    Contact: LawrenceJMuller@gmail.com
+	</footer><!-- .footer -->
+
+</div><!-- .wrapper -->
+</body>	
+	
+</html>
+
+
+

@@ -1,0 +1,77 @@
+
+h1{
+	font-size: 5em;
+	font-family: inherit;
+}
+
+h2{
+	font-size: 2em;
+	font-family: inherit;
+}
+
+h3{
+	font-size: 2em;
+	font-family: inherit;
+}
+
+a{
+	color:black;
+}
+
+p{
+    text-align:center;
+}
+
+
+img.gallary{
+    width:150px;
+    height:150px;
+}
+
+img{
+    width:450px;
+    height:inherit;
+    padding: 1px;
+     -webkit-box-shadow:inset 1px 1px 15px 1px rgba(0,0,0,255);
+    box-shadow:inset 1px 1px 15px 1px rgba(0,0,0,255);
+}
+
+table{
+    align-self:center;
+    align-content:center;
+}
+
+td{
+    align-content:center;
+    padding: 24px;
+}
+
+body:image{
+    position:absolute;
+    bottom: 5px;
+}
+
+body{
+    
+	background-image:url("images/blue_design.jpg");  
+    background-repeat:repeat-x;
+    background-attachment:fixed;
+    background-position:left bottom;
+    background-size:contain;
+    
+    font-family:fantasy;
+    font-size: 1.5em;
+    line-height:inherit;
+    align-content:center;
+}
+
+#divMid{
+    background-color: white;
+    text-align: center;
+    align-content:center;
+    position: relative;
+        
+    position: relative;
+        
+}
+

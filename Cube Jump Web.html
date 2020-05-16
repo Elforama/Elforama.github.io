@@ -1,0 +1,126 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+	<head>
+		
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>Unity Web Player | Cube Jump</title>
+		<script type='text/javascript' src='https://ssl-webplayer.unity3d.com/download_webplayer-3.x/3.0/uo/jquery.min.js'></script>
+		<script type="text/javascript">
+		
+		var unityObjectUrl = "http://webplayer.unity3d.com/download_webplayer-3.x/3.0/uo/UnityObject2.js";
+		if (document.location.protocol == 'https:')
+			unityObjectUrl = unityObjectUrl.replace("http://", "https://ssl-");
+		document.write('<script type="text\/javascript" src="' + unityObjectUrl + '"><\/script>');
+		
+		</script>
+		<script type="text/javascript">
+		
+			var config = {
+				width: 960, 
+				height: 600,
+				params: { enableDebugging:"0" }
+				
+			};
+			var u = new UnityObject2(config);
+
+			jQuery(function() {
+
+				var $missingScreen = jQuery("#unityPlayer").find(".missing");
+				var $brokenScreen = jQuery("#unityPlayer").find(".broken");
+				$missingScreen.hide();
+				$brokenScreen.hide();
+				
+				u.observeProgress(function (progress) {
+					switch(progress.pluginStatus) {
+						case "broken":
+							$brokenScreen.find("a").click(function (e) {
+								e.stopPropagation();
+								e.preventDefault();
+								u.installPlugin();
+								return false;
+							});
+							$brokenScreen.show();
+						break;
+						case "missing":
+							$missingScreen.find("a").click(function (e) {
+								e.stopPropagation();
+								e.preventDefault();
+								u.installPlugin();
+								return false;
+							});
+							$missingScreen.show();
+						break;
+						case "installed":
+							$missingScreen.remove();
+						break;
+						case "first":
+						break;
+					}
+				});
+				u.initPlugin(jQuery("#unityPlayer")[0], "Cube Jump Web.unity3d");
+			});
+		
+		</script>
+        
+        <link href="Layout.css" rel="stylesheet">
+	    <link rel="stylesheet" type="text/css" href="styles.css">
+        
+	</head>
+    
+    <body>
+
+<div class="wrapper" id="divMid">
+
+	<header class="header">
+        <br>
+        <p><h2>Lawrence Muller's Portfolio</h2></p>
+    
+        <nav>
+            - <a href="index.html"> Home</a> |
+            <a href="Art_2D.html"> 2D Artwork</a> |
+            <a href="Art_3D.html"> 3D Artwork</a></li> |
+            <a href="Cube%20Jump%20Web.html"> Game Development</a> - 
+        </nav>
+        ------------------------------------------------------------------------------
+	</header><!-- .header-->
+
+	<main class="content">
+        <br>
+        <nav>
+            - <a href="Cube%20Jump%20Web.html">Cube Jump</a> |
+            <a href="Pong.html">Pong</a> |
+            <a href="One%20at%20a%20Time%20v1.html">One at a Time</a> |
+            <a href="ZombieShooterGame.html">Zombie Shooter</a></li> -
+        </nav>
+        <br>
+        <div id="divMid">
+            <h3>Cube Jump</h3>
+		<div class="content">
+			<div id="unityPlayer">
+				<div class="missing">
+					<a href="http://unity3d.com/webplayer/" title="Unity Web Player. Install now!">
+						<img alt="Unity Web Player. Install now!" src="http://webplayer.unity3d.com/installation/getunity.png" width="193" height="63" />
+					</a>
+				</div>
+				<div class="broken">
+					<a href="http://unity3d.com/webplayer/" title="Unity Web Player. Install now! Restart your browser after install.">
+						<img alt="Unity Web Player. Install now! Restart your browser after install." src="http://webplayer.unity3d.com/installation/getunityrestart.png" width="193" height="63" />
+					</a>
+				</div>
+			</div>
+		</div>
+        </div>
+        <br><br><br>
+		
+	</main><!-- .content -->
+
+	<footer class="footer">
+	Site by Lawrence Muller 2013
+        <br>
+    Contact: LawrenceJMuller@gmail.com
+	</footer><!-- .footer -->
+
+</div><!-- .wrapper -->
+</body>	
+	
+</html>
